@@ -1,10 +1,16 @@
-numpy
-Pillow
-PyYAML
-scipy
-scikit-image
-imagecodecs
-tifffile
-tqdm
-torch
-torchvision
+# Core numeric and image processing dependencies
+numpy>=2.2,<2.5
+Pillow>=12.2,<13
+PyYAML>=6.0,<7
+scipy>=1.15,<1.16
+scikit-image>=0.25,<0.26
+imagecodecs>=2025.3
+tifffile>=2025.5
+tqdm>=4.68,<5
+
+# Deep learning stack.
+# The current validated local environment uses torch==2.7.1+cu128 and
+# torchvision==0.22.1+cu128. Install the CUDA build from the PyTorch index
+# if pip cannot resolve the desired GPU wheel from your configured mirror.
+torch>=2.7,<2.8
+torchvision>=0.22,<0.23
