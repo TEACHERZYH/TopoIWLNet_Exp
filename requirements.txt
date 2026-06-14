@@ -1,0 +1,10 @@
+numpy
+Pillow
+PyYAML
+scipy
+scikit-image
+imagecodecs
+tifffile
+tqdm
+torch
+torchvision

@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local experiment artifacts
+experiments/
+outputs/
+logs/
+
+# Model checkpoints and exported weights
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine
+
+# Dataset and generated raster artifacts
+data/
+datasets/
+raw/
+processed/
+*.tif
+*.tiff
+*.npy
+
+# Runtime files
+*.log
+*.tmp
+*.bak
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

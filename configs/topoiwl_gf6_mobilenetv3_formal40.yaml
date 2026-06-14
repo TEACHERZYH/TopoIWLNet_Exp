@@ -1,0 +1,43 @@
+seed: 42
+
+dataset:
+  root: F:/2026/Remote Sensing_codex/datasets/GF6_TCUNet/processed/topoiwl_format
+  train_split: F:/2026/Remote Sensing_codex/datasets/GF6_TCUNet/processed/topoiwl_format/splits/train.csv
+  val_split: F:/2026/Remote Sensing_codex/datasets/GF6_TCUNet/processed/topoiwl_format/splits/val.csv
+  test_split: F:/2026/Remote Sensing_codex/datasets/GF6_TCUNet/processed/topoiwl_format/splits/test.csv
+  image_mean: [0.485, 0.456, 0.406]
+  image_std: [0.229, 0.224, 0.225]
+
+model:
+  in_channels: 3
+  width: 64
+  encoder: mobilenet_v3_large
+  pretrained: true
+  pretrained_weights: DEFAULT
+  freeze_encoder: false
+
+loss:
+  lambda_boundary: 1.0
+  lambda_distance: 0.5
+  lambda_topology: 0.2
+  boundary_pos_weight: 8.0
+  topology_buffer_iters: 2
+
+train:
+  use_cuda: true
+  epochs: 40
+  batch_size: 2
+  num_workers: 2
+  lr: 0.00025
+  weight_decay: 0.0001
+  amp: true
+  amp_init_scale: 1024
+
+eval:
+  mask_threshold: 0.7
+  boundary_threshold: 0.8
+  boundary_tolerances: [1, 2, 3, 5]
+  main_tolerance: 3
+
+output:
+  exp_dir: F:/2026/Remote Sensing_codex/TopoIWLNet_Exp/experiments/gf6_mobilenetv3_formal40

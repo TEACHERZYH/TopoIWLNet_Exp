@@ -1,0 +1,43 @@
+seed: 42
+
+dataset:
+  root: F:/2026/Remote Sensing_codex/datasets/GF6_TCUNet/processed/topoiwl_format
+  train_split: F:/2026/Remote Sensing_codex/datasets/GF6_TCUNet/processed/topoiwl_format/splits/train.csv
+  val_split: F:/2026/Remote Sensing_codex/datasets/GF6_TCUNet/processed/topoiwl_format/splits/val.csv
+  test_split: F:/2026/Remote Sensing_codex/datasets/GF6_TCUNet/processed/topoiwl_format/splits/test.csv
+  image_mean: [0.13079419699530181, 0.20402835376150294, 0.12039565361876671]
+  image_std: [0.07995418927406385, 0.15305796551761253, 0.07822307254291326]
+
+model:
+  in_channels: 3
+  width: 64
+  encoder: lightweight
+  pretrained: false
+  pretrained_weights:
+  freeze_encoder: false
+
+loss:
+  lambda_boundary: 1.0
+  lambda_distance: 0.5
+  lambda_topology: 0.2
+  boundary_pos_weight: 8.0
+  topology_buffer_iters: 3
+
+train:
+  use_cuda: true
+  epochs: 160
+  batch_size: 2
+  num_workers: 2
+  lr: 0.0005
+  weight_decay: 0.0001
+  amp: true
+  amp_init_scale: 1024
+
+eval:
+  mask_threshold: 0.5
+  boundary_threshold: 0.5
+  boundary_tolerances: [1, 2, 3, 5]
+  main_tolerance: 3
+
+output:
+  exp_dir: F:/2026/Remote Sensing_codex/TopoIWLNet_Exp/experiments/topoiwl_default
