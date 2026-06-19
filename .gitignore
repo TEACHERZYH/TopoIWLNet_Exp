@@ -25,10 +25,10 @@ logs/
 *.engine
 
 # Dataset and generated raster artifacts
-data/
-datasets/
-raw/
-processed/
+/data/
+/datasets/
+/raw/
+/processed/
 *.tif
 *.tiff
 *.npy
