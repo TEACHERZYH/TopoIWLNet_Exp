@@ -1,0 +1,36 @@
+seed: 42
+
+dataset:
+  root: /data/zyh/datasets/GLH-Water/processed/topoiwl_format
+  train_split: /data/zyh/datasets/GLH-Water/processed/topoiwl_format/splits/train.csv
+  val_split: /data/zyh/datasets/GLH-Water/processed/topoiwl_format/splits/val.csv
+  test_split: /data/zyh/datasets/GLH-Water/processed/topoiwl_format/splits/test.csv
+  image_mean: [0.485, 0.456, 0.406]
+  image_std: [0.229, 0.224, 0.225]
+
+model:
+  architecture: unet
+  in_channels: 3
+  base_channels: 32
+
+loss:
+  mask_pos_weight: 1.0
+
+train:
+  use_cuda: true
+  epochs: 80
+  batch_size: 8
+  num_workers: 4
+  lr: 0.0005
+  weight_decay: 0.0001
+  amp: true
+  amp_init_scale: 1024
+
+eval:
+  mask_threshold: 0.5
+  boundary_threshold: 0.5
+  boundary_tolerances: [1, 2, 3, 5]
+  main_tolerance: 3
+
+output:
+  exp_dir: /data/zyh/projects/TopoIWLNet_Exp/experiments/baseline_remote_glh_unet80

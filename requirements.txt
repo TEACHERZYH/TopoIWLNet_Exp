@@ -14,3 +14,4 @@ tqdm>=4.68,<5
 # if pip cannot resolve the desired GPU wheel from your configured mirror.
 torch>=2.7,<2.8
 torchvision>=0.22,<0.23
+timm>=1.0,<1.1

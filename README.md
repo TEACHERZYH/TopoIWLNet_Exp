@@ -210,3 +210,11 @@ GF6_TCUNET_DATA_PREPARATION_REPORT.md
 ```text
 GF6_PROBE20_REPORT.md
 ```
+
+## 论文实验可复现记录
+
+Remote Sensing 投稿稿件使用的远程训练路径、数据集根目录、核心配置、baseline/TopoIWL/PVTv2/GLH optimized fusion 结果文件、预测输出目录和标准评估命令见：
+
+```text
+REPRODUCIBILITY_REMOTE_EXPERIMENTS.md
+```

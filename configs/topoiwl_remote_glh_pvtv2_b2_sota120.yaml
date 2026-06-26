@@ -1,0 +1,45 @@
+seed: 42
+
+dataset:
+  root: /data/zyh/datasets/GLH-Water/processed/topoiwl_format
+  train_split: /data/zyh/datasets/GLH-Water/processed/topoiwl_format/splits/train.csv
+  val_split: /data/zyh/datasets/GLH-Water/processed/topoiwl_format/splits/val.csv
+  test_split: /data/zyh/datasets/GLH-Water/processed/topoiwl_format/splits/test.csv
+  image_mean: [0.2992063010525468, 0.32436525174224984, 0.28688215997987226]
+  image_std: [0.2183558775755294, 0.19196205420355555, 0.17850040530695627]
+
+model:
+  in_channels: 3
+  width: 128
+  encoder: pvt_v2_b2
+  pretrained: true
+  freeze_encoder: false
+  highres_refine: true
+
+loss:
+  lambda_boundary: 1.2
+  lambda_distance: 0.5
+  lambda_topology: 0.2
+  lambda_pyramid: 0.25
+  pyramid_scales: [2, 4, 8]
+  boundary_pos_weight: 8.0
+  topology_buffer_iters: 2
+
+train:
+  use_cuda: true
+  epochs: 120
+  batch_size: 4
+  num_workers: 4
+  lr: 0.00025
+  weight_decay: 0.0001
+  amp: true
+  amp_init_scale: 1024
+
+eval:
+  mask_threshold: 0.5
+  boundary_threshold: 0.5
+  boundary_tolerances: [1, 2, 3, 5]
+  main_tolerance: 3
+
+output:
+  exp_dir: /data/zyh/projects/TopoIWLNet_Exp/experiments/remote_glh_pvtv2_b2_sota120

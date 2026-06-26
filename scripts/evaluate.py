@@ -19,6 +19,7 @@ from topoiwl.config import ensure_dir, load_config  # noqa: E402
 from topoiwl.data.dataset import WaterlineDataset  # noqa: E402
 from topoiwl.metrics import boundary_f1, confusion_metrics, distance_metrics, topology_stats  # noqa: E402
 from topoiwl.models.topoiwl_net import build_model  # noqa: E402
+from topoiwl.utils.morphology import binary_dilation, binary_erosion  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -28,12 +29,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--split", default="test", choices=["train", "val", "test"])
     parser.add_argument("--out-csv", type=Path, default=None)
     parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument("--boundary-source", default="head", choices=["head", "mask"])
+    parser.add_argument("--mask-boundary-width", type=int, default=1)
+    parser.add_argument("--mask-threshold", type=float, default=None)
+    parser.add_argument("--boundary-threshold", type=float, default=None)
     return parser.parse_args()
+
+
+def mask_to_boundary(mask: np.ndarray, width: int = 1) -> np.ndarray:
+    mask = mask.astype(bool)
+    dilated = binary_dilation(mask, iterations=width)
+    eroded = binary_erosion(mask, iterations=width)
+    return np.logical_and(dilated, ~eroded)
 
 
 def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
+    mask_threshold = float(args.mask_threshold) if args.mask_threshold is not None else float(cfg["eval"]["mask_threshold"])
+    boundary_threshold = (
+        float(args.boundary_threshold) if args.boundary_threshold is not None else float(cfg["eval"]["boundary_threshold"])
+    )
     split_key = f"{args.split}_split"
     ds_cfg = cfg["dataset"]
     ds = WaterlineDataset(
@@ -58,8 +74,11 @@ def main() -> None:
             pred = model(image)
             mask_prob = torch.sigmoid(pred["mask"])[0, 0].cpu().numpy()
             boundary_prob = torch.sigmoid(pred["boundary"])[0, 0].cpu().numpy()
-            mask_pred = mask_prob >= cfg["eval"]["mask_threshold"]
-            boundary_pred = boundary_prob >= cfg["eval"]["boundary_threshold"]
+            mask_pred = mask_prob >= mask_threshold
+            if args.boundary_source == "head":
+                boundary_pred = boundary_prob >= boundary_threshold
+            else:
+                boundary_pred = mask_to_boundary(mask_pred, width=args.mask_boundary_width)
             mask_gt = batch["mask"][0, 0].numpy() > 0.5
             boundary_gt = batch["boundary"][0, 0].numpy() > 0.5
             row = {"stem": batch["stem"][0]}

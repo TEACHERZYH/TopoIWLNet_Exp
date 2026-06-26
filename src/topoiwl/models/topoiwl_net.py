@@ -143,6 +143,41 @@ class TorchvisionMobileNetV3Encoder(nn.Module):
         return outputs
 
 
+class TimmFeatureEncoder(nn.Module):
+    """Generic timm feature encoder for stronger SOTA-oriented variants."""
+
+    def __init__(
+        self,
+        model_name: str,
+        in_channels: int = 3,
+        pretrained: bool = False,
+        freeze: bool = False,
+        out_indices: tuple[int, int, int, int] = (0, 1, 2, 3),
+    ) -> None:
+        super().__init__()
+        try:
+            import timm
+        except ImportError as exc:
+            raise ImportError("timm is required for transformer/SOTA encoders; install it with `pip install timm`.") from exc
+
+        self.features = timm.create_model(
+            model_name,
+            pretrained=pretrained,
+            features_only=True,
+            out_indices=out_indices,
+            in_chans=in_channels,
+        )
+        self.out_channels = tuple(int(ch) for ch in self.features.feature_info.channels())
+        if len(self.out_channels) != 4:
+            raise ValueError(f"Expected four feature stages from {model_name}, got {self.out_channels}")
+        if freeze:
+            for param in self.features.parameters():
+                param.requires_grad = False
+
+    def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
+        return list(self.features(x))
+
+
 class FusionBlock(nn.Module):
     def __init__(self, in_ch: int, out_ch: int) -> None:
         super().__init__()
@@ -167,8 +202,10 @@ class TopoIWLNet(nn.Module):
         pretrained: bool = False,
         pretrained_weights: str | None = None,
         freeze_encoder: bool = False,
+        highres_refine: bool = False,
     ) -> None:
         super().__init__()
+        self.in_channels = in_channels
         encoder_name = encoder_name.lower()
         if encoder_name == "lightweight":
             enc_channels = (24, 40, 80, 160)
@@ -191,12 +228,36 @@ class TopoIWLNet(nn.Module):
                 freeze=freeze_encoder,
             )
             enc_channels = self.encoder.out_channels
+        elif encoder_name.startswith("timm:"):
+            self.encoder = TimmFeatureEncoder(
+                model_name=encoder_name.split(":", 1)[1],
+                in_channels=in_channels,
+                pretrained=pretrained,
+                freeze=freeze_encoder,
+            )
+            enc_channels = self.encoder.out_channels
+        elif encoder_name.startswith(("mit_", "swin_", "convnext_", "coat_", "pvt_")):
+            self.encoder = TimmFeatureEncoder(
+                model_name=encoder_name,
+                in_channels=in_channels,
+                pretrained=pretrained,
+                freeze=freeze_encoder,
+            )
+            enc_channels = self.encoder.out_channels
         else:
             raise ValueError(f"Unsupported encoder_name: {encoder_name}")
         self.lateral4 = FusionBlock(enc_channels[3], width)
         self.lateral3 = FusionBlock(enc_channels[2] + width, width)
         self.lateral2 = FusionBlock(enc_channels[1] + width, width)
         self.lateral1 = FusionBlock(enc_channels[0] + width, width)
+        self.highres_refine = highres_refine
+        if highres_refine:
+            stem_width = max(width // 2, 32)
+            self.image_stem = nn.Sequential(
+                ConvBNAct(in_channels, stem_width, kernel=3, stride=2),
+                ConvBNAct(stem_width, width, kernel=3),
+            )
+            self.highres_fusion = FusionBlock(width * 2, width)
 
         self.mask_head = self._make_head(width, 1)
         self.boundary_head = self._make_head(width, 1)
@@ -215,6 +276,10 @@ class TopoIWLNet(nn.Module):
         p3 = self.lateral3(torch.cat([f3, F.interpolate(p4, size=f3.shape[-2:], mode="bilinear", align_corners=False)], dim=1))
         p2 = self.lateral2(torch.cat([f2, F.interpolate(p3, size=f2.shape[-2:], mode="bilinear", align_corners=False)], dim=1))
         p1 = self.lateral1(torch.cat([f1, F.interpolate(p2, size=f1.shape[-2:], mode="bilinear", align_corners=False)], dim=1))
+        if self.highres_refine:
+            hr = self.image_stem(x)
+            p1 = F.interpolate(p1, size=hr.shape[-2:], mode="bilinear", align_corners=False)
+            p1 = self.highres_fusion(torch.cat([p1, hr], dim=1))
 
         mask = F.interpolate(self.mask_head(p1), size=input_size, mode="bilinear", align_corners=False)
         boundary = F.interpolate(self.boundary_head(p1), size=input_size, mode="bilinear", align_corners=False)
@@ -222,8 +287,178 @@ class TopoIWLNet(nn.Module):
         return {"mask": mask, "boundary": boundary, "distance": distance}
 
 
-def build_model(model_cfg: dict[str, object]) -> TopoIWLNet:
-    """Build a TopoIWL-Net variant from the config dictionary."""
+def as_waterline_output(mask: torch.Tensor) -> dict[str, torch.Tensor]:
+    """Wrap a mask-only baseline output in the project prediction contract."""
+
+    return {"mask": mask, "boundary": mask, "distance": torch.zeros_like(mask)}
+
+
+class DoubleConv(nn.Sequential):
+    def __init__(self, in_ch: int, out_ch: int) -> None:
+        super().__init__(
+            ConvBNAct(in_ch, out_ch, kernel=3),
+            ConvBNAct(out_ch, out_ch, kernel=3),
+        )
+
+
+class UNetBaseline(nn.Module):
+    """Compact U-Net baseline for water mask segmentation."""
+
+    def __init__(self, in_channels: int = 3, base_channels: int = 32) -> None:
+        super().__init__()
+        c1, c2, c3, c4 = base_channels, base_channels * 2, base_channels * 4, base_channels * 8
+        self.enc1 = DoubleConv(in_channels, c1)
+        self.enc2 = DoubleConv(c1, c2)
+        self.enc3 = DoubleConv(c2, c3)
+        self.enc4 = DoubleConv(c3, c4)
+        self.pool = nn.MaxPool2d(2)
+        self.up3 = nn.ConvTranspose2d(c4, c3, 2, stride=2)
+        self.dec3 = DoubleConv(c3 + c3, c3)
+        self.up2 = nn.ConvTranspose2d(c3, c2, 2, stride=2)
+        self.dec2 = DoubleConv(c2 + c2, c2)
+        self.up1 = nn.ConvTranspose2d(c2, c1, 2, stride=2)
+        self.dec1 = DoubleConv(c1 + c1, c1)
+        self.head = nn.Conv2d(c1, 1, 1)
+
+    def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
+        e1 = self.enc1(x)
+        e2 = self.enc2(self.pool(e1))
+        e3 = self.enc3(self.pool(e2))
+        e4 = self.enc4(self.pool(e3))
+        d3 = self.dec3(torch.cat([self.up3(e4), e3], dim=1))
+        d2 = self.dec2(torch.cat([self.up2(d3), e2], dim=1))
+        d1 = self.dec1(torch.cat([self.up1(d2), e1], dim=1))
+        return as_waterline_output(self.head(d1))
+
+
+class MobileNetV3UNetBaseline(nn.Module):
+    """MobileNetV3 encoder-decoder baseline with only mask supervision."""
+
+    def __init__(
+        self,
+        in_channels: int = 3,
+        width: int = 64,
+        variant: str = "large",
+        pretrained: bool = False,
+        pretrained_weights: str | None = None,
+        freeze_encoder: bool = False,
+    ) -> None:
+        super().__init__()
+        self.encoder = TorchvisionMobileNetV3Encoder(
+            variant=variant,
+            in_channels=in_channels,
+            pretrained=pretrained,
+            weights=pretrained_weights,
+            freeze=freeze_encoder,
+        )
+        enc_channels = self.encoder.out_channels
+        self.lateral4 = FusionBlock(enc_channels[3], width)
+        self.lateral3 = FusionBlock(enc_channels[2] + width, width)
+        self.lateral2 = FusionBlock(enc_channels[1] + width, width)
+        self.lateral1 = FusionBlock(enc_channels[0] + width, width)
+        self.head = nn.Sequential(ConvBNAct(width, width, kernel=3), nn.Conv2d(width, 1, 1))
+
+    def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
+        input_size = x.shape[-2:]
+        f1, f2, f3, f4 = self.encoder(x)
+        p4 = self.lateral4(f4)
+        p3 = self.lateral3(torch.cat([f3, F.interpolate(p4, size=f3.shape[-2:], mode="bilinear", align_corners=False)], dim=1))
+        p2 = self.lateral2(torch.cat([f2, F.interpolate(p3, size=f2.shape[-2:], mode="bilinear", align_corners=False)], dim=1))
+        p1 = self.lateral1(torch.cat([f1, F.interpolate(p2, size=f1.shape[-2:], mode="bilinear", align_corners=False)], dim=1))
+        mask = F.interpolate(self.head(p1), size=input_size, mode="bilinear", align_corners=False)
+        return as_waterline_output(mask)
+
+
+class DeepLabV3MobileNetBaseline(nn.Module):
+    """Torchvision DeepLabV3-MobileNetV3 baseline with a single mask head."""
+
+    def __init__(
+        self,
+        in_channels: int = 3,
+        pretrained: bool = False,
+        pretrained_weights: str | None = None,
+    ) -> None:
+        super().__init__()
+        if in_channels != 3:
+            raise ValueError("DeepLabV3MobileNetBaseline currently supports 3-channel inputs only")
+        try:
+            from torchvision.models import MobileNet_V3_Large_Weights
+            from torchvision.models.segmentation import deeplabv3_mobilenet_v3_large
+        except ImportError as exc:
+            raise ImportError("torchvision is required for DeepLabV3-MobileNetV3") from exc
+        weights_backbone = None
+        if pretrained:
+            if pretrained_weights in (None, "", "DEFAULT", "default"):
+                weights_backbone = MobileNet_V3_Large_Weights.DEFAULT
+            else:
+                weights_backbone = MobileNet_V3_Large_Weights[pretrained_weights]
+        self.model = deeplabv3_mobilenet_v3_large(weights=None, weights_backbone=weights_backbone, num_classes=1)
+
+    def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
+        return as_waterline_output(self.model(x)["out"])
+
+
+class DeepLabV3ResNet50Baseline(nn.Module):
+    """Torchvision DeepLabV3-ResNet50 baseline with a single mask head."""
+
+    def __init__(
+        self,
+        in_channels: int = 3,
+        pretrained: bool = False,
+        pretrained_weights: str | None = None,
+    ) -> None:
+        super().__init__()
+        if in_channels != 3:
+            raise ValueError("DeepLabV3ResNet50Baseline currently supports 3-channel inputs only")
+        try:
+            from torchvision.models import ResNet50_Weights
+            from torchvision.models.segmentation import deeplabv3_resnet50
+        except ImportError as exc:
+            raise ImportError("torchvision is required for DeepLabV3-ResNet50") from exc
+        weights_backbone = None
+        if pretrained:
+            if pretrained_weights in (None, "", "DEFAULT", "default"):
+                weights_backbone = ResNet50_Weights.DEFAULT
+            else:
+                weights_backbone = ResNet50_Weights[pretrained_weights]
+        self.model = deeplabv3_resnet50(weights=None, weights_backbone=weights_backbone, num_classes=1)
+
+    def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
+        return as_waterline_output(self.model(x)["out"])
+
+
+def build_model(model_cfg: dict[str, object]) -> nn.Module:
+    """Build a model variant from the config dictionary."""
+
+    architecture = str(model_cfg.get("architecture", "topoiwl")).lower()
+    if architecture in {"unet", "u-net"}:
+        return UNetBaseline(
+            in_channels=int(model_cfg.get("in_channels", 3)),
+            base_channels=int(model_cfg.get("base_channels", model_cfg.get("width", 32))),
+        )
+    if architecture in {"mobilenetv3_unet", "mobilenet_v3_unet", "mbv3_unet"}:
+        encoder_name = str(model_cfg.get("encoder", "mobilenet_v3_large")).lower()
+        variant = "small" if "small" in encoder_name else "large"
+        return MobileNetV3UNetBaseline(
+            in_channels=int(model_cfg.get("in_channels", 3)),
+            width=int(model_cfg.get("width", 64)),
+            variant=variant,
+            pretrained=bool(model_cfg.get("pretrained", False)),
+            pretrained_weights=model_cfg.get("pretrained_weights") or None,
+            freeze_encoder=bool(model_cfg.get("freeze_encoder", False)),
+        )
+    if architecture in {"deeplabv3_mobilenet", "deeplabv3_mobilenetv3", "deeplabv3"}:
+        return DeepLabV3MobileNetBaseline(
+            in_channels=int(model_cfg.get("in_channels", 3)),
+            pretrained=bool(model_cfg.get("pretrained", False)),
+            pretrained_weights=model_cfg.get("pretrained_weights") or None,
+        )
+    if architecture in {"deeplabv3_resnet50", "deeplabv3_resnet"}:
+        return DeepLabV3ResNet50Baseline(
+            in_channels=int(model_cfg.get("in_channels", 3)),
+            pretrained=bool(model_cfg.get("pretrained", False)),
+            pretrained_weights=model_cfg.get("pretrained_weights") or None,
+        )
 
     return TopoIWLNet(
         in_channels=int(model_cfg.get("in_channels", 3)),
@@ -232,4 +467,5 @@ def build_model(model_cfg: dict[str, object]) -> TopoIWLNet:
         pretrained=bool(model_cfg.get("pretrained", False)),
         pretrained_weights=model_cfg.get("pretrained_weights") or None,
         freeze_encoder=bool(model_cfg.get("freeze_encoder", False)),
+        highres_refine=bool(model_cfg.get("highres_refine", False)),
     )
