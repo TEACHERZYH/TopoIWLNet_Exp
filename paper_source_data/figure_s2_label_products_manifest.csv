@@ -1,0 +1,11 @@
+Dataset,Sample,Product,Path
+GF6,gf6_118,images,F:\2026\Remote Sensing_codex\datasets\GF6_TCUNet\processed\topoiwl_format\images\gf6_118.png
+GF6,gf6_118,masks,F:\2026\Remote Sensing_codex\datasets\GF6_TCUNet\processed\topoiwl_format\masks\gf6_118.png
+GF6,gf6_118,boundary,F:\2026\Remote Sensing_codex\datasets\GF6_TCUNet\processed\topoiwl_format\boundary\gf6_118.png
+GF6,gf6_118,buffer,F:\2026\Remote Sensing_codex\datasets\GF6_TCUNet\processed\topoiwl_format\buffer\gf6_118.png
+GF6,gf6_118,distance_png,F:\2026\Remote Sensing_codex\datasets\GF6_TCUNet\processed\topoiwl_format\distance_png\gf6_118.png
+SeaLand,sealand_0001,images,F:\2026\Remote Sensing_codex\datasets\SeaLand_Coastline_2025\processed\topoiwl_format\images\sealand_0001.png
+SeaLand,sealand_0001,masks,F:\2026\Remote Sensing_codex\datasets\SeaLand_Coastline_2025\processed\topoiwl_format\masks\sealand_0001.png
+SeaLand,sealand_0001,boundary,F:\2026\Remote Sensing_codex\datasets\SeaLand_Coastline_2025\processed\topoiwl_format\boundary\sealand_0001.png
+SeaLand,sealand_0001,buffer,F:\2026\Remote Sensing_codex\datasets\SeaLand_Coastline_2025\processed\topoiwl_format\buffer\sealand_0001.png
+SeaLand,sealand_0001,distance_png,F:\2026\Remote Sensing_codex\datasets\SeaLand_Coastline_2025\processed\topoiwl_format\distance_png\sealand_0001.png

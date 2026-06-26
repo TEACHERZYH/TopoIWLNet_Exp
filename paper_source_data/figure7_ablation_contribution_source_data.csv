@@ -1,0 +1,9 @@
+Dataset,Variant,IoU,F1,BF1@3,CD,HD,Broken segments
+GF6,"Mask-only, BF1 threshold",0.843,0.8913,0.9178,7.2988,72.9676,26.79
+GF6,+ Boundary branch,0.8533,0.9003,0.9366,4.9184,64.3088,16.01
+GF6,+ Boundary + Distance,0.8551,0.9023,0.9377,4.6124,62.2406,16.67
+GF6,Full model,0.8596,0.9064,0.9419,4.0779,59.3228,17.42
+SeaLand,"Mask-only, BF1 threshold",0.9789,0.9887,0.6145,84.7583,303.4972,31.17
+SeaLand,+ Boundary branch,0.9811,0.9899,0.9068,4.5317,30.3811,21.47
+SeaLand,+ Boundary + Distance,0.9794,0.9888,0.9047,4.4796,33.2992,22.01
+SeaLand,Full model,0.9802,0.9892,0.9078,4.3333,29.2245,22.63

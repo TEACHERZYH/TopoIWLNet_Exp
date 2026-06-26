@@ -4,6 +4,8 @@ Date: 2026-06-26
 
 This file records the experiment provenance for the Remote Sensing manuscript draft. Dataset archives are not distributed with this repository; users must obtain the original datasets from their providers and organize them into the documented `topoiwl_format`.
 
+The public repository contains code, configurations, small result-summary CSV files, and manuscript figure source-data CSV files. It intentionally excludes original imagery, dataset archives, model checkpoints, full experiment directories, prediction rasters, and remote host logs.
+
 ## Remote Execution Environment
 
 - Remote host used for full training and evaluation: `zhangl@180.209.128.66`
@@ -21,6 +23,13 @@ This file records the experiment provenance for the Remote Sensing manuscript dr
 | GLH-Water | `/data/zyh/datasets/GLH-Water/processed/topoiwl_format` |
 
 The manuscript uses GF6_TCUNet and SeaLand_Coastline_2025 as the two main waterline benchmarks. GLH-Water is treated as a large-scene heterogeneous-label stress test.
+
+## Included Result and Figure Source Data
+
+- `results/baseline_real_results_summary.csv` and `.json`: same-split baseline summary values.
+- `results/sensitivity_summary.csv`: real threshold/radius sensitivity summary.
+- `results/sensitivity_best_thresholds.csv`: validation-selected threshold summary.
+- `paper_source_data/`: small CSV files used for manuscript figure source data, qualitative manifests, and numerical traceability audits.
 
 ## Main TopoIWL-Net Runs
 

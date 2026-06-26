@@ -1,0 +1,4 @@
+Dataset,Sensor,Spatial setting,Patches,Train,Val,Test,Annotation
+GF6_TCUNet,GF-6 optical,High-resolution water-land scenes,1886,1318,284,284,Water/land mask
+SeaLand_Coastline_2025,Optical coastline,Coastline and nearshore scenes,2113,1479,317,317,Mask + edge labels
+GLH-Water,Large optical scenes,Large heterogeneous scenes,6295,4915,676,704,Water/non-water mask

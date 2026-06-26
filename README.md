@@ -14,7 +14,8 @@ TopoIWL-Net 实验工程，用于论文 **TopoIWL-Net: A Lightweight Geometry-To
 - 模型训练；
 - 评估；
 - 预测输出；
-- 后续数据转换脚本的放置位置。
+- 后续数据转换脚本的放置位置；
+- 论文图表与数值审计所需的小型 source-data CSV。
 
 ## 工程结构
 
@@ -40,10 +41,18 @@ TopoIWLNet_Exp/
     config.py
     losses.py
     metrics.py
+  results/
+    baseline_real_results_summary.csv
+    sensitivity_summary.csv
+  paper_source_data/
+    figure*_source_data.csv
+    figure*_manifest.csv
   experiments/
   outputs/
   logs/
 ```
+
+`paper_source_data/` 仅包含用于复现论文图件和数值追踪审计的小型 CSV 文件，不包含原始遥感影像、数据集压缩包、模型权重或预测栅格。
 
 ## 统一数据格式
 

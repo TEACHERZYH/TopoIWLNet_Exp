@@ -1,0 +1,4 @@
+Dataset,Sample,MobileNetV3_UNet_BF1_3,DeepLabV3_ResNet50_BF1_3,TopoIWL_Net_BF1_3,TopoIWL_Output
+GF6,gf6_118,0.8136,0.6725,0.8513,full
+SeaLand,sealand_0001,0.5333,0.5348,0.9177,full
+GLH,glh_test_74_02560_12288,0.0824,0.0000,0.6151,validation_optimized_fusion
