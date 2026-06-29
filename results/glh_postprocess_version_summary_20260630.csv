@@ -1,0 +1,4 @@
+version,status,path,select,best_val_score,iou,f1,bf1_3,chamfer,hausdorff,broken_segments,pred_components,component_diff,mask_threshold,final_threshold,alpha,mask_boundary_width,mask_buffer_iters,gap_bridge_iters,min_component_size,max_components
+remote_glh_postprocess_composite_v1a_20260630,missing_summary,experiments/remote_glh_postprocess_composite_v1a_20260630,,,,,,,,,,,,,,,,,,
+remote_glh_postprocess_composite_v1b_fast_20260630,missing_summary,experiments/remote_glh_postprocess_composite_v1b_fast_20260630,,,,,,,,,,,,,,,,,,
+remote_glh_postprocess_composite_v1c_narrow_20260630,completed,experiments/remote_glh_postprocess_composite_v1c_narrow_20260630,composite,-0.10714247586644987,0.5286110834556376,0.5643828758317817,0.6145835327664114,32.9371080002721,79.89400256931555,13.352272727272727,1.0085227272727273,-0.34801136363636365,0.65,0.65,0.35,1,0,0,128,2
